@@ -1,0 +1,78 @@
+﻿{% extends "layout.html" %}
+{% block body %}
+<div id="categories">
+    <h3>Categories</h3>
+    {% if 'username' in session %}
+    <div class="options">
+        <a class="padded-link" href="{{url_for('addCategory')}}">Add</a>
+        {% if category_picked %}
+        <a class="padded-link" href="{{url_for('editCategory', category=category_picked.name)}}">Edit</a>
+        <a class="padded-link" href="{{url_for('deleteCategory', category=category_picked.name)}}">Delete</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    <ul class="flex-container">{% for category in categories %}
+         <li><a href="{{url_for('category', category=category.name)}}">{{category.name}}</a></li>{% endfor %}
+    </ul>
+</div>
+
+{% if category_picked %}
+<div id="items">
+    <h3>Items</h3>
+    {% if 'username' in session %}
+    <div class="options">
+        <a class="padded-link" href="{{url_for('addItem', category=category_picked.name)}}">Add</a>
+        {% if item_picked %}
+        <a class="padded-link" href="{{url_for('editItem', category=category_picked.name, item=item_picked.name)}}">Edit</a>
+        <a class="padded-link" href="{{url_for('deleteItem', category=category_picked.name, item=item_picked.name)}}">Delete</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if items|length > 0 %}
+    <ul class="flex-container">
+        {% for item in items %}
+            <li><a href="{{url_for('item', category=category_picked.name, item=item.name)}}">{{item.name}}</a></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="center-text">No items yet!</p>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if item_picked %}
+<div id="description">
+    <h3>Description</h3>
+    {% if image %}
+    <img src="data:;base64,{{image}}"/>
+    {% endif %}
+    {% if item_picked.description %}
+    <p>{{item_picked.description}}</p>
+    {% else %}
+    <p>No description yet! Edit items to add, edit, or delete a description.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+    window.onload = function() {
+        var result = document.URL.match(/catalog\/.*[^\?.*|^#.*]/g);
+        if(result) {
+            category_result = result[0].split("/")[1];
+            item_result = result[0].split("/")[2];
+            console.log(item_result);
+            var links = document.querySelectorAll('.flex-container a');
+            for(index in links) {
+                if(links[index].text == decodeURI(category_result) || links[index].text == decodeURI(item_result)) {
+                    try {
+                        links[index].style.textDecoration = "underline";
+                        links[index].style.fontWeight = "600";
+                    }
+                    catch(e) { /* we don't need to do anything here */ }
+                }
+            }
+        }
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <link href="{{url_for('static', filename='site.css')}}" rel="stylesheet" />
+    <title>Categorizer</title>
+</head>
+<body>
+    <header>
+        <h1>
+            <a href="/catalog/">Categorizer</a>
+        </h1>
+        {% if 'username' not in session %}
+        <a class="padded-link" href="{{url_for('login')}}">Login</a>
+        {% else %}
+        <a class="padded-link" href="{{url_for('logout')}}">Logout</a>
+        {% endif %}
+    </header>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <span id="flash-message" class="center-text">{{message}}</span>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+        
+    {% block body %}{% endblock %}
+</body>
+</html>

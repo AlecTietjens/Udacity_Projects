@@ -1,0 +1,13 @@
+﻿{% extends "layout.html" %}
+{% block body %}
+<div>
+    <h3>Delete Item {{item_name}} in Category {{category_name}}</h3>
+    <div class="options">
+        <a class="padded-link" href="{{url_for('main')}}">Back</a>
+    </div>
+    <form action="#" method="post" class="center-element">
+        <span>Are you sure you want to delete {{item_name}}?</span><br/>
+        <button type="submit" id="submit">Delete</button>
+    </form>
+</div>
+{% endblock %}

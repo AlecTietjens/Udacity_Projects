@@ -1,0 +1,25 @@
+﻿{% extends "layout.html" %}
+{% block body %}
+<div>
+    <h3>Edit Item {{item_picked.name}} in {{category_name}}</h3>
+    <div class="options">
+        <a class="padded-link" href="{{url_for('main')}}">Back</a>
+    </div>
+    <form action="" method="post" class="center-element">
+        <label for="name">Name:</label><br/>
+        <input type="text" maxlength="50" name="name" value="{{item_picked.name}}"><br/>
+        <label for="description">Description:</label><br/>
+        <textarea maxlength="200" name="description">{{item_picked.description}}</textarea><br/>
+        {% if image %}
+        <label>Current image...</label>
+        <img src="data:;base64,{{image}}"/><br/>
+        <label for="image">If replacing, choose a new image</label><br/>
+        <input type="file" name="image">
+        {% else %}
+        <label for="image">Image:  ..(optional)</label><br/>
+        <input type="file" name="image">
+        {% endif %}
+        <button type="submit" id="submit">Submit</button>
+    </form>
+</div>
+{% endblock %}
