@@ -7,9 +7,11 @@ DAL.py - data access layer for application (ORM)
 create_catalog_db.sql - SQL script to create database for project  
 *client_secrets.json - Used for Google OAuth... this will need to be replaced with client_secrets created through your own Google dev console  
   
-For this project you will need to initialize a database with create_catalog_db.sql. After that you will be able to launch application.py to start the web server and make requests against the machine. I used Vagrant to make setting up a virtual machine less effortful. The files are located in vagrant/catalog/  
+For this project you will need to create a database before launching - 'psql -> CREATE DATABASE catalog;'. After that you will be able to launch application.py to start the web server and make requests against the machine. I used Vagrant to make setting up a virtual machine less effortful. The files are located in vagrant/catalog/  
   
 This project requires apt-get of PostgreSQL, Python, python-flask, python-sqlalchemy, and python-pip. It will need pip install of oauth2client, requests, and httplib2.  
+*NOTE: If you receive the error <b>TypeError: <oauth2client.client.OAuth2Credentials object at 0x00000000039DBC88>
+is not JSON serializable</b>, then Flask version 0.9 needs to be installed instead of newer versions (pip install flask==0.9)
   
 Create the database by executing the following commands:  
   

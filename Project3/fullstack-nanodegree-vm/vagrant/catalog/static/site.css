@@ -20,7 +20,7 @@ header {
 }
 
 img {
-    width: 150px;
+    width: 200px;
     height: 150px;
     margin-right: 20px;
     float: left;
@@ -58,7 +58,7 @@ form {
 }
 
 form label {
-    position: absolute;
+    position: relative;
     left: 0;
 }
 
