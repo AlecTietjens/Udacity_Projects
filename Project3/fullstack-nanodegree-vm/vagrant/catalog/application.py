@@ -13,6 +13,7 @@ from flask import Flask, render_template, session as login_session, make_respons
 # For returning XML through APIs
 import xml.etree.ElementTree as ET
 
+# Used for image processing from database to site, and vice versa
 from base64 import b64encode
 
 app = Flask(__name__)
@@ -441,7 +442,21 @@ def gdisconnect():
         response = make_response(json.dumps('Failed to revoke token for given user.'), 400)
         response.headers['Content-Type'] = 'application/json'
         return response
-    
+
+# Generate nonce for POST DELETE... code @ http://flask.pocoo.org/snippets/3/
+@app.before_request
+def csrf_protect():
+    if request.method == "POST" and request.path != '/gconnect':
+        token = login_session.pop('_csrf_token', None)
+        if not token or token != request.form.get('_csrf_token'):
+            abort(403)
+
+def generate_csrf_token():
+    if '_csrf_token' not in login_session:
+        login_session['_csrf_token'] = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(12))
+    return login_session['_csrf_token']
+
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
     
 if __name__ == '__main__':
     app.config['SECRET_KEY'] = 'super secret key'

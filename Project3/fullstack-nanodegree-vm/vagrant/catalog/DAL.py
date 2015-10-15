@@ -1,3 +1,5 @@
+# ORM for catalog db and application
+
 import os
 import sys
 from sqlalchemy import Column, ForeignKey, Integer, String, LargeBinary

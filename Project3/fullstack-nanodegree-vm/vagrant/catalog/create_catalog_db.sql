@@ -1,7 +1,7 @@
--- Table definitions for the tournament project.
+-- Table definitions for the catalog project.
 --
 -- Author: Alec Tietjens
--- Date: 09/28/2015
+-- Date: 10/14/2015
 
 DROP DATABASE IF EXISTS catalog;
 
