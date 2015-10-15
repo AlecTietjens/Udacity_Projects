@@ -3,7 +3,7 @@
 # tournament.py -- implementation of a Swiss-system tournament
 #
 # Author: Alec Tietjens
-# Date: 09/28/2015
+# Date: 10/14/2015
 
 import psycopg2
 
@@ -17,7 +17,7 @@ def connect():
 def deleteMatches():
     conn = connect()
     c = conn.cursor()
-    c.execute("TRUNCATE TABLE Match;")
+    c.execute("TRUNCATE TABLE match;")
     conn.commit()
     conn.close()
 
@@ -25,8 +25,7 @@ def deleteMatches():
 def deletePlayers():
     conn = connect()
     c = conn.cursor()
-    c.execute("TRUNCATE TABLE Player;")
-    c.execute("TRUNCATE TABLE Standings;")
+    c.execute("TRUNCATE TABLE player CASCADE;")
     conn.commit()
     conn.close()
 
@@ -34,7 +33,7 @@ def deletePlayers():
 def countPlayers():
     conn = connect()
     c = conn.cursor()
-    c.execute("SELECT * FROM Player;")
+    c.execute("SELECT * FROM player;")
     count = c.rowcount
     conn.commit()
     conn.close()
@@ -49,12 +48,7 @@ def registerPlayer(name):
     conn = connect()
     c = conn.cursor()
     """Insert player into Player table"""
-    c.execute("INSERT INTO Player(name) VALUES (%s);", (name,))
-    c.execute("SELECT id FROM Player WHERE name=%s", (name,))
-    
-    """Insert player into Standings table"""
-    playerid = c.fetchone()[0]
-    c.execute("INSERT INTO Standings(playername, playerid) VALUES(%s, %s);", (name, playerid))
+    c.execute("INSERT INTO player(name) VALUES (%s);", (name,))
     conn.commit()
     conn.close() 
 
@@ -70,13 +64,13 @@ def registerPlayer(name):
 def playerStandings():
     conn = connect()
     c = conn.cursor()
-    c.execute("SELECT * FROM Standings ORDER BY WINS;")
+    c.execute("SELECT * FROM standings;")
 	
     """create list and add players and their standing to it"""
     player_list = []
     for x in range(0, c.rowcount):
         player = c.fetchone()
-        player_list.append([player[2], player[1], player[3], player[4]])
+        player_list.append([player[0], player[1], player[2], player[3]])
     conn.commit()
     conn.close()
     return player_list
@@ -92,19 +86,7 @@ def reportMatch(winner, loser):
     c = conn.cursor()
 
     """Report the match"""
-    c.execute("INSERT INTO Match(WinnerID, LoserID) VALUES(%s, %s);", (winner, loser))
-	
-    """Update Standings - Update record for the winner"""
-    c.execute("SELECT Wins, Matches FROM Standings WHERE PlayerID=%s;", (winner,))
-    winner_standings = c.fetchone()
-    c.execute("UPDATE Standings SET Wins=%s, Matches=%s WHERE PlayerID=%s;", (winner_standings[0]+1,winner_standings[1]+1, winner))
-    
-    """Update Standings - Update record for the loser"""
-    c.execute("SELECT Matches FROM Standings WHERE PlayerID=%s;", (loser,))
-    loser_standings = c.fetchone()
-    c.execute("UPDATE Standings SET Matches=%s WHERE PlayerID=%s;", (loser_standings[0]+1, loser))
-
-    count = c.rowcount
+    c.execute("INSERT INTO match(winner_id, loser_id) VALUES(%s, %s);", (winner, loser))
     conn.commit()
     conn.close()
  
