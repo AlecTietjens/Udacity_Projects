@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 # OAuth imports and helpers
-from oauth2client.client import flow_from_clientsecrets, FlowExchangeError
+from oauth2client.client import flow_from_clientsecrets, FlowExchangeError, OAuth2Credentials
 import httplib2
 import json
 import requests
@@ -67,7 +67,7 @@ def generate_csrf_token():
     if '_csrf_token' not in login_session:
         login_session['_csrf_token'] = \
             ''.join(random.choice(string.ascii_uppercase + string.digits)
-            for x in xrange(12))
+                    for x in xrange(12))
     return login_session['_csrf_token']
 
 
@@ -96,8 +96,10 @@ def category(category):
         category = session.query(Category).filter_by(name=category).one()
         # Get category items
         items = session.query(Item).filter_by(category_id=category.id).all()
-        return render_template\
-            ('main.html', category_picked=category, categories=categories, items=items)
+        return render_template('main.html',
+                               category_picked=category,
+                               categories=categories,
+                               items=items)
 
     # Else return 404
     abort(404)
@@ -105,15 +107,18 @@ def category(category):
 
 # Add a category - fix this for session
 @app.route('/catalog/addcategory', methods=['GET', 'POST'])
+@csrf_protect
 @login_required
-def addCategory():   
+def addCategory():
     if request.method == 'POST':
         # First check to see if category name already exists
-        if session.query(Category).filter_by(name=request.form['name']).first() != None:
+        if session.query(Category).filter_by(
+                                name=request.form['name']).first() != None:
             flash('Category %s already exists' % request.form['name'])
             return redirect(url_for('main'))
         # Add new category from form name value
-        new_category = Category(name=request.form['name'], creator_id=login_session['user_id'])
+        new_category = Category(name=request.form['name'],
+                                creator_id=login_session['user_id'])
         session.add(new_category)
         flash('New category %s successfully created' % new_category.name)
         session.commit()
@@ -125,11 +130,13 @@ def addCategory():
 
 # Edit a category
 @app.route('/catalog/<category>/edit', methods=['GET', 'POST'])
+@csrf_protect
 @login_required
 def editCategory(category):
     if request.method == 'POST':
         # First check to see if category name already exists
-        if session.query(Category).filter_by(name=request.form['name']).first() != None:
+        if session.query(Category).filter_by(
+                                    name=request.form['name']).first() != None:
             flash('Category %s already exists' % request.form['name'])
             return redirect(url_for('main'))
         edit_category = session.query(Category).filter_by(name=category).one()
@@ -149,16 +156,14 @@ def editCategory(category):
 def deleteCategory(category):
     if request.method == 'POST':
         # Get selected category
-        delete_category = session.query(Category).filter_by(name=category).one()
-        # Gather items under selected category
-        delete_category_items = \
-            session.query(Item).filter_by(category_id=delete_category.id).all()
-        # Delete the items for the category
-        for item in delete_category_items:
-            session.delete(item)
-        # Delete the category
+        delete_category = session.query(
+                            Category).filter_by(name=category).one()
+
+        # Delete the category.. items are deleted with cascade in DAL.py
         session.delete(delete_category)
-        flash('Category %s and its items have been successfully deleted.' % category)
+        flash('Category %s and its items have '
+              'been successfully deleted.' % category)
+        session.commit()
         return redirect('/')
     else:
         # HTTP GET
@@ -175,44 +180,49 @@ def item(category, item):
     # Get category items
     items = session.query(Item).filter_by(category_id=category.id).all()
     # Get category and item
-    item = session.query(Item).filter_by(name=item,category_id=category.id).one()
+    item = session.query(Item).filter_by(
+                    name=item, category_id=category.id).one()
     # If image exists
-    
+
     # Init image to None and update if it exists for the item
     image = None
-    if item.image != None:
+    if item.image is not None:
         # Encode to string to be transmitted
         image = b64encode(item.image)
-        
-    return render_template('main.html', 
-        item_picked=item, 
-        category_picked=category, 
-        categories=categories, 
-        items=items, 
-        image=image)
+
+    return render_template('main.html',
+                           item_picked=item,
+                           category_picked=category,
+                           categories=categories,
+                           items=items,
+                           image=image)
 
 
 # Add an item to a category
 @app.route('/catalog/<category>/additem', methods=['GET', 'POST'])
+@csrf_protect
 @login_required
-def addItem(category):        
+def addItem(category):
     if request.method == 'POST':
         category = session.query(Category).filter_by(name=category).first()
         # See if item already exists for the category
-        if session.query(Item).filter_by(name=request.form['name'], 
-                                            category_id=category.id).first() != None:
-            flash('Item %s for category %s already exists' % (request.form['name'], category.name))
+        if session.query(Item).filter_by(
+                   name=request.form['name'],
+                   category_id=category.id).first() != None:
+
+            flash('Item %s for category %s '
+                  'already exists' % (request.form['name'], category.name))
             return redirect(url_for('main'))
         # Create and add new item
-        new_item = Item(name=request.form['name'], 
-            description=request.form['description'], 
-            category_id=category.id)
-        
+        new_item = Item(name=request.form['name'],
+                        description=request.form['description'],
+                        category_id=category.id)
+
         # Add image to item if user uploaded one
         if request.files['image']:
             file = request.files['image']
             new_item.image = file.read()
-        
+
         session.add(new_item)
         flash('New item %s successfully created' % new_item.name)
         session.commit()
@@ -224,58 +234,71 @@ def addItem(category):
 
 # Edit an item in a category
 @app.route('/catalog/<category>/<item>/edit', methods=['GET', 'POST'])
+@csrf_protect
 @login_required
 def editItem(category, item):
     # Get related category
     category = session.query(Category).filter_by(name=category).first()
-    
+
     if request.method == 'POST':
         # See if item already exists for the category
-        current_item = session.query(Item).filter_by(name=item, category_id=category.id).first()
-        found_item = session.query(Item).filter_by(name=request.form['name'], category_id=category.id).first()
-        
-        # Edit item if name matches what we're working on or if name does not exist yet
-        if current_item.id == found_item.id or found_item == None:
-            edit_item = session.query(Item).filter_by(name=request.form['name'],category_id=category.id).one()
+        current_item = session.query(Item).filter_by(
+                                      name=item,
+                                      category_id=category.id).first()
+        found_item = session.query(Item).filter_by(
+                                      name=request.form['name'],
+                                      category_id=category.id).first()
+
+        # Edit item if name matches what we're working on or
+        # if name does not exist yet
+        if found_item is None or current_item.id == found_item.id:
+            edit_item = current_item
             edit_item.name = request.form['name']
             edit_item.description = request.form['description']
             session.commit()
-            flash('Item %s in category %s successfully edited' % (item, category.name))
+            flash('Item %s in category %s successfully edited' %
+                  (item, category.name))
             return redirect(url_for('main'))
         else:
-            flash('Item %s for category %s already exists' % (request.form['name'], category.name))
+            flash('Item %s for category %s already exists' %
+                  (request.form['name'], category.name))
             return redirect('/')
     # HTTP GET
     else:
-        item = session.query(Item).filter_by(name=item,category_id=category.id).first()
+        item = session.query(Item).filter_by(
+                    name=item, category_id=category.id).first()
         # Init image to None and set if image exists for item
         image = None
-        if item.image != None:
+        if item.image is not None:
             # Encode to string to be transmitted
             image = b64encode(item.image)
-        return render_template('edititem.html', category_name=category.name, item_picked=item, image=image)
+        return render_template('edititem.html',
+                               category_name=category.name,
+                               item_picked=item,
+                               image=image)
 
 
 # Delete an item from a category
 @app.route('/catalog/<category>/<item>/delete', methods=['GET', 'POST'])
+@csrf_protect
 @login_required
 def deleteItem(category, item):
     if request.method == 'POST':
-        # Check for CSRF
-        token = login_session.pop('_csrf_token', None)
-        if not token or token != request.form.get('_csrf_token'):
-            abort(403)
-            
         # Get category for item
         category = session.query(Category).filter_by(name=category).first()
         # Get item and delete
-        delete_item = session.query(Item).filter_by(name=item, category_id=category.id).one()
+        delete_item = session.query(Item).filter_by(
+                                name=item, category_id=category.id).one()
+
         session.delete(delete_item)
         flash('Item %s been successfully deleted.' % item)
+        session.commit()
         return redirect('/')
     else:
         # HTTP GET
-        return render_template('deleteitem.html', category_name=category, item_name=item)
+        return render_template('deleteitem.html',
+                               category_name=category,
+                               item_name=item)
 
 
 # Return catalog (categories) in JSON
@@ -303,8 +326,9 @@ def getCatalogXML():
             xml_item = ET.SubElement(xml_category, 'item')
             xml_item_name = ET.SubElement(xml_item, 'name').text = i.name
             # If description exists, insert it
-            if i.description != None:
-                xml_item_description = ET.SubElement(xml_item, 'description').text = i.description
+            if i.description is not None:
+                xml_item_description = ET.SubElement(
+                            xml_item, 'description').text = i.description
     return ET.tostring(xml_categories)
 
 
@@ -313,7 +337,7 @@ def getCatalogXML():
 @app.route('/catalog/<category>/api/json')
 def getCategoryJSON(category):
     category = session.query(Category).filter_by(name=category).first()
-    if category != None:
+    if category is not None:
         items = session.query(Item).filter_by(category_id=category.id).all()
         return jsonify(items=[i.serialize for i in items])
     else:
@@ -324,7 +348,7 @@ def getCategoryJSON(category):
 @app.route('/catalog/<category>/api/xml')
 def getCategoryXML(category):
     category = session.query(Category).filter_by(name=category).first()
-    if category == None:
+    if category is None:
         return 'Category not found'
     xml_category = ET.Element('category')
     xml_id = ET.SubElement(xml_category, 'id').text = str(category.id)
@@ -335,36 +359,43 @@ def getCategoryXML(category):
         xml_item = ET.SubElement(xml_category, 'item')
         xml_item_name = ET.SubElement(xml_item, 'name').text = i.name
         # If description exists, insert it
-        if i.description != None:
-            xml_item_description = ET.SubElement(xml_item, 'description').text = i.description
+        if i.description is not None:
+            xml_item_description = ET.SubElement(
+                            xml_item, 'description').text = i.description
     return ET.tostring(xml_category)
-        
+
+
 # Return item in JSON
 @app.route('/catalog/<category>/<item>/api')
 @app.route('/catalog/<category>/<item>/api/json')
 def getItemJSON(category, item):
     category = session.query(Category).filter_by(name=category).first()
-    if category != None:
-        item = session.query(Item).filter_by(name=item, category_id=category.id).first()
-        if item != None:
+    if category is not None:
+        item = session.query(Item).filter_by(name=item,
+                                      category_id=category.id).first()
+        if item is not None:
             return jsonify(item.serialize)
         else:
             return 'Item not found'
     else:
         return 'Category not found'
 
+
 # Return item in XML
 @app.route('/catalog/<category>/<item>/api/xml')
 def getItemXML(category, item):
     category = session.query(Category).filter_by(name=category).first()
-    if category != None:
-        item = session.query(Item).filter_by(name=item, category_id=category.id).first()
-        if item != None:
+    if category is not None:
+        item = session.query(Item).filter_by(
+                            name=item, category_id=category.id).first()
+
+        if item is not None:
             xml_item = ET.Element('item')
             xml_id = ET.SubElement(xml_item, 'id').text = str(item.id)
             xml_name = ET.SubElement(xml_item, 'name').text = item.name
             if item.description:
-                xml_item_description = ET.SubElement(xml_item, 'description').text = item.description
+                xml_item_description = ET.SubElement(
+                    xml_item, 'description').text = item.description
             return ET.tostring(xml_item)
         else:
             return 'Item not found'
@@ -375,11 +406,14 @@ def getItemXML(category, item):
 # Login
 @app.route('/login')
 def login():
-    state = ''.join(random.choice(string.ascii_uppercase + string.digits) for x in xrange(32))
+    state = ''.join(random.choice(
+            string.ascii_uppercase + string.digits)
+            for x in xrange(32))
+
     login_session['state'] = state
     return render_template('login.html', STATE=state)
 
-  
+
 # Logout
 @app.route('/logout')
 def logout():
@@ -448,13 +482,14 @@ def gconnect():
     stored_credentials = login_session.get('credentials')
     stored_gplus_id = login_session.get('gplus_id')
     if stored_credentials is not None and gplus_id == stored_gplus_id:
-        response = make_response(json.dumps('Current user is already connected.'),
-                                 200)
+        response = make_response(
+                    json.dumps('Current user is already connected.'), 200)
+
         response.headers['Content-Type'] = 'application/json'
         return response
 
     # Store the access token in the session for later use.
-    login_session['credentials'] = credentials
+    login_session['credentials'] = credentials.to_json()
     login_session['gplus_id'] = gplus_id
 
     # Get user info
@@ -467,7 +502,7 @@ def gconnect():
     login_session['username'] = data['name']
     login_session['picture'] = data['picture']
     login_session['email'] = data['email']
-    
+
     # see if user exists, if it doesn't make a new one
     user_id = getUserID(data["email"])
     if not user_id:
@@ -480,18 +515,21 @@ def gconnect():
     output += '!</h1>'
     output += '<img src="'
     output += login_session['picture']
-    output += ' " style = "width: 300px; height: 300px;border-radius: 150px;-webkit-border-radius: 150px;-moz-border-radius: 150px;"> '
+    output += ' " style = "width: 300px; height: 300px;'
+    'border-radius: 150px;-webkit-border-radius: 150px;'
+    '-moz-border-radius: 150px;"> '
     flash("you are now logged in as %s" % login_session['username'])
     return output
 
-    
+
 # Disconnect Google OAuth
 @app.route("/gdisconnect")
 def gdisconnect():
     # Only disconnect a connected user
-    credentials = login_session.get('credentials')
+    credentials = OAuth2Credentials(login_session.get('credentials'))
     if credentials is None:
-        response = make_response(json.dumps('Current user not connected.'), 401)
+        response = make_response(json.dumps('Current user not connected.'),
+                                 401)
         response.headers['Content-Type'] = 'application/json'
         return response
     # Execute HTTP GET request to revoke current token
@@ -499,18 +537,19 @@ def gdisconnect():
     url = 'https://accounts.google.com/o/oauth2/revoke?token=%s' % access_token
     h = httplib2.Http()
     result = h.request(url, 'GET')[0]
-    
+
     if result['status'] == '200':
         response = make_response(json.dumps('Successfully disconnected.'), 200)
         response.headers['Content-Type'] = 'application/json'
         return response
     else:
         # For whatever reason, the given token was invalid
-        response = make_response(json.dumps('Failed to revoke token for given user.'), 400)
+        response = make_response(
+                    json.dumps('Failed to revoke token for given user.'), 400)
         response.headers['Content-Type'] = 'application/json'
         return response
 
-        
+
 # User Helper Functions
 # Create User
 def createUser(login_session):
@@ -530,7 +569,7 @@ def getUserID(email):
     except:
         return None
 
-        
+
 if __name__ == '__main__':
     app.config['SECRET_KEY'] = 'super secret key'
     app.run(host='0.0.0.0')

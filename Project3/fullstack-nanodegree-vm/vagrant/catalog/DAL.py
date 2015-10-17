@@ -3,7 +3,7 @@ import os
 import sys
 from sqlalchemy import Column, ForeignKey, Integer, String, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, backref
 from sqlalchemy import create_engine
 
 Base = declarative_base()
@@ -31,7 +31,9 @@ class Category(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     creator_id = Column(Integer, ForeignKey('user_account.id'))
-    creator = relationship(User)
+    
+    creator = relationship("User")
+    items = relationship("Item", cascade="all, delete-orphan")
     
     @property
     def serialize(self):
@@ -51,8 +53,9 @@ class Item(Base):
     image = Column(LargeBinary, nullable=True)
     category_id = Column(Integer, ForeignKey('category.id'))
     creator_id = Column(Integer, ForeignKey('user_account.id'))
-    category = relationship(Category)
-    creator = relationship(User)
+    
+    category = relationship("Category")
+    creator = relationship("User")    
     
     @property
     def serialize(self):
