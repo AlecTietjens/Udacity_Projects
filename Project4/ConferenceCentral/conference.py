@@ -810,8 +810,8 @@ class ConferenceApi(remote.Service):
         
     @endpoints.method(SESSION_GET_REQUEST, BooleanMessage,
             path='sessionwishlist/{websafeSessionKey}',
-            http_method='DELETE', name='removeSessionFromWishlist')
-    def removeSessionFromWishlist(self, request):
+            http_method='DELETE', name='deleteSessionFromWishlist')
+    def deleteSessionFromWishlist(self, request):
         """Remove a session from user's wishlist."""
         return self._sessionWishlist(request, wishlist=False)
 
