@@ -3,6 +3,7 @@ entities used by the Game. Because these classes are also regular Python
 classes they can include methods (such as 'to_form' and 'new_game')."""
 
 import random
+import logging
 from datetime import date
 from protorpc import messages
 from google.appengine.ext import ndb
@@ -34,7 +35,7 @@ class Game(ndb.Model):
                     word=random_word,
                     attempts_allowed=attempts,
                     attempts_remaining=attempts,
-					letters_current=letters_current,
+                    letters_current=letters_current,
                     letters_remaining=len(random_word))
         game.put()
         return game
@@ -57,10 +58,10 @@ class Game(ndb.Model):
         letters = []
         letters_score = 0;
         for letter in self.word:
-            if ''.join(letters).find(letter) is 0:
+            if ''.join(letters).find(letter) is -1:
                 letters_score = letters_score + 1
             letters.append(letter);
-        return len(self.letters_guessed) - len(letters) - letters_score
+        return len(self.letters_guessed) - letters_score
         
 
     def end_game(self, won=False):
@@ -72,8 +73,12 @@ class Game(ndb.Model):
             self.game_status = 'Lost'
         self.put()
         # Add the game to the score 'board'
-        score = Score(parent=self.key, user=self.key.parent(), date=date.today(), won=won,
-                      guesses=self.attempts_allowed - self.attempts_remaining, score = self.get_score())
+        score = Score(parent=self.key, 
+                      user=self.key.parent(), 
+                      date=date.today(), 
+                      won=won,
+                      guesses=self.attempts_allowed - self.attempts_remaining, 
+                      score = self.get_score())
         score.put()
 
 
@@ -131,17 +136,32 @@ class ScoreForms(messages.Message):
     items = messages.MessageField(ScoreForm, 1, repeated=True)
 
 
-class StringMessage(messages.Message):
-    """StringMessage-- outbound (single) string message"""
-    message = messages.StringField(1, required=True)
-
-
 class UserRankingForm(messages.Message):
     """Outbound user rankings"""
     user = messages.StringField(1, required=True)
-    win_rate = messages.FloatField(2, required=True)
+    avg_score = messages.FloatField(2, required=True)
 
 
 class UserRankingForms(messages.Message):
     """Return multiple UserRankingForms"""
     items = messages.MessageField(UserRankingForm, 1, repeated=True)
+
+
+class HistoryForm(messages.Message):
+    """Return a move/history"""
+    attempt_number = messages.IntegerField(1, required=True)
+    letter_guessed = messages.StringField(2, required=True)
+    guess_status = messages.StringField(3, required=True)
+    game_status = messages.StringField(4, required=False)
+    
+    
+class GameHistoryForm(messages.Message):
+    """Return multiple HistoryForms for game history"""
+    items = messages.MessageField(HistoryForm, 1, repeated=True)
+    
+    
+class StringMessage(messages.Message):
+    """StringMessage-- outbound (single) string message"""
+    message = messages.StringField(1, required=True)
+
+

@@ -3,7 +3,6 @@ This can also contain game logic. For more complex games it would be wise to
 move game logic to another file. Ideally the API will be simple, concerned
 primarily with communication to/from the API's users."""
 
-
 import logging
 import endpoints
 import dictionary
@@ -14,12 +13,11 @@ from google.appengine.api import taskqueue
 
 from models import User, Game, Score
 from models import StringMessage, NewGameForm, GameForm, GuessLetterForm,\
-    ScoreForms, GameForms, UserRankingForm, UserRankingForms
+    ScoreForms, GameForms, UserRankingForm, UserRankingForms, HistoryForm, GameHistoryForm
 from utils import get_by_urlsafe
 
 NEW_GAME_REQUEST = endpoints.ResourceContainer(NewGameForm)
-GET_GAME_REQUEST = endpoints.ResourceContainer(
-        urlsafe_game_key=messages.StringField(1),)
+GET_GAME_REQUEST = endpoints.ResourceContainer(urlsafe_game_key=messages.StringField(1),)
 GUESS_LETTER_REQUEST = endpoints.ResourceContainer(
     GuessLetterForm,
     urlsafe_game_key=messages.StringField(1),)
@@ -31,7 +29,7 @@ USER_RANKINGS = endpoints.ResourceContainer()
 
 MEMCACHE_MOVES_REMAINING = 'MOVES_REMAINING'
 
-@endpoints.api(name='hangman', version='v1.1')
+@endpoints.api(name='hangman', version='v1')
 class HangmanApi(remote.Service):
     """Hangman API"""
     @endpoints.method(request_message=USER_REQUEST,
@@ -149,23 +147,6 @@ class HangmanApi(remote.Service):
         game.put()
 
         return game.to_form(msg)
-        '''
-        if request.guess == game.target:
-            game.end_game(True)
-            return game.to_form('You win!')
-
-        if request.guess < game.target:
-            msg = 'Too low!'
-        else:
-            msg = 'Too high!'
-
-        if game.attempts_remaining < 1:
-            game.end_game(False)
-            return game.to_form(msg + ' Game over!')
-        else:
-            game.put()
-        '''
-
 
     @endpoints.method(response_message=ScoreForms,
                       path='scores',
@@ -178,7 +159,7 @@ class HangmanApi(remote.Service):
 
     @endpoints.method(request_message=USER_REQUEST,
                       response_message=ScoreForms,
-                      path='scores/user/{user_name}',
+                      path='scores/{user_name}',
                       name='get_user_scores',
                       http_method='GET')
     def get_user_scores(self, request):
@@ -192,7 +173,7 @@ class HangmanApi(remote.Service):
 
     @endpoints.method(request_message=USER_REQUEST,
                       response_message=GameForms,
-                      path='games/user/{user_name}',
+                      path='games/{user_name}',
                       name='get_user_games',
                       http_method='GET')
     def get_user_games(self, request):
@@ -214,12 +195,12 @@ class HangmanApi(remote.Service):
         if request.number_of_results is not None:
             scores = Score.query().order(Score.score).fetch(request.number_of_results)
         else:
-            scores = Score.query().order(-Score.score)
+            scores = Score.query().order(Score.score)
         return ScoreForms(items=[score.to_form() for score in scores])
 
     @endpoints.method(response_message=UserRankingForms,
                       path='userrankings',
-                      name='user_rankings',
+                      name='get_user_rankings',
                       http_method='GET',)
     def get_user_rankings(self, request):
         """Gets user rankings"""
@@ -228,32 +209,46 @@ class HangmanApi(remote.Service):
         for user in users:
             scores = Score.query(Score.user==user.key)
             scores = [float(score.score) for score in scores]
-            win_rate = sum(scores)/len(scores)
+            avg_score = sum(scores)/len(scores)
             form = UserRankingForm()
             form.user = user.name
-            form.win_rate = win_rate
+            form.avg_score = avg_score
+            forms.append(form)            
+        return UserRankingForms(items=sorted(forms, key=lambda form: form.avg_score))
+
+    @endpoints.method(response_message=GameHistoryForm,
+                      request_message=GET_GAME_REQUEST,
+                      path='gamehistory/{urlsafe_game_key}',
+                      name='get_game_history',
+                      http_method='GET',)
+    def get_game_history(self, request):
+    	"""Gets history of moves for a game"""
+        game = get_by_urlsafe(request.urlsafe_game_key, Game)
+        
+        if game.game_status == 'Playing':
+            return game.to_form('Game has not finished!')
+        
+        # initialize variables
+        guesses = game.letters_guessed
+        count = 1
+        forms = []
+        
+        # go through all letters guessed except last one
+        for letter in guesses[:-1]:
+            form = HistoryForm()
+            if ''.join(game.word).find(letter) is -1:
+                form.guess_status = 'Incorrect'
+            else:
+                form.guess_status = 'Correct'
+            form.letter_guessed = letter
+            form.attempt_number = count
+            count = count + 1
             forms.append(form)
-        return UserRankingForms(items=forms)
-
-    @endpoints.method(response_message=StringMessage,
-                      path='games/average_attempts',
-                      name='get_average_attempts_remaining',
-                      http_method='GET')
-    def get_average_attempts(self, request):
-        """Get the cached average moves remaining"""
-        return StringMessage(message=memcache.get(MEMCACHE_MOVES_REMAINING) or '')
-
-    @staticmethod
-    def _cache_average_attempts():
-        """Populates memcache with the average moves remaining of Games"""
-        games = Game.query(Game.game_status == 'Playing').fetch
-        if games:
-            count = len(games)
-            total_attempts_remaining = sum([game.attempts_remaining
-                                        for game in games])
-            average = float(total_attempts_remaining)/count
-            memcache.set(MEMCACHE_MOVES_REMAINING,
-                         'The average moves remaining is {:.2f}'.format(average))
+        
+        # attach game status to last move/form
+        forms[-1].game_status = game.game_status
+            
+        return GameHistoryForm(items = forms)
 
 
 api = endpoints.api_server([HangmanApi])
