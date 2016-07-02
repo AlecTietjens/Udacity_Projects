@@ -4,7 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 
 # OAuth imports and helpers
-from oauth2client.client import flow_from_clientsecrets, FlowExchangeError, OAuth2Credentials
+from oauth2client.client import flow_from_clientsecrets, \
+								FlowExchangeError, OAuth2Credentials
 import httplib2
 import json
 import requests
