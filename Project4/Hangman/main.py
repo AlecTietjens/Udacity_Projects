@@ -19,17 +19,17 @@ class SendReminderEmail(webapp2.RequestHandler):
         users = User.query(User.email != None)
         for user in users:
             games = Game.query(ancestor=user.key)
-                if games is not None:
-                    for game in games.iter():
-                        if game.game_status == 'Playing':
-                            subject = 'This is a reminder!'
-                            body = 'Hello {}, you have an active game!'.format(user.name)
-                            # This will send test emails, the arguments to send_mail are:
-                            # from, to, subject, body
-                            mail.send_mail('noreply@{}.appspotmail.com'.format(app_id),
-                                            user.email,
-                                            subject,
-                                            body)
+            if games is not None:
+                for game in games.iter():
+                    if game.game_status == 'Playing':
+                        subject = 'This is a reminder!'
+                        body = 'Hello {}, you have an active game!'.format(user.name)
+                        # This will send test emails, the arguments to send_mail are:
+                        # from, to, subject, body
+                        mail.send_mail('noreply@{}.appspotmail.com'.format(app_id),
+                                        user.email,
+                                        subject,
+                                        body)
 
 
 app = webapp2.WSGIApplication([

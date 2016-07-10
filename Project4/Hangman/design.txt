@@ -1,0 +1,21 @@
+Design Decisions
+
+----------------------------------
+
+When creating the game, I faced several design decisions regarding architecture of the
+game and API. Hangman itself is not a difficult game to create, but deciding how to
+communicate the data between the server and a client was difficult. 
+
+The toughest decisions regarded how to place the data (status of the word to be guessed) 
+in a format that is easily readable for people and software. The software is only 
+concerned with all the letters being guessed that exist in the given word, but humans 
+would like to see where the letters sit that are correct so that they can use context 
+clues to guess more educated letters. So I created lists for letters guessed and the 
+current status of the word (guessed correct letters fall in the correct spots for 
+the word).
+
+Another complicated decision was figuring out a good way to score the game. I decided to
+make scoring based off of what a perfect game could be. Currently, if you guess every 
+letter correctly, you'll get a score of 0. You receive a point for every incorrect guess.
+I feel this decision could be better if it was scored to where you receive more points for
+fewer guesses, or maybe somehow get more points for "smarter" guesses.

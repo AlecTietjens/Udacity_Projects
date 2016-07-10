@@ -100,6 +100,7 @@ class HangmanApi(remote.Service):
         if game:
             if game.game_status == 'Playing':
                 game.game_status = 'Cancelled'
+                game.put()
                 return game.to_form('Game has been cancelled!')
             else:
                 return game.to_form('Unable to cancel game!')
@@ -182,7 +183,7 @@ class HangmanApi(remote.Service):
         if not user:
             raise endpoints.NotFoundException(
                     'A User with that name does not exist!')
-        games = Game.query(ancestor=user.key)
+        games = Game.query(Game.game_status=="Playing", ancestor=user.key)
         return GameForms(items=[game.to_form() for game in games])
 
     @endpoints.method(request_message=HIGH_SCORES,
@@ -208,12 +209,13 @@ class HangmanApi(remote.Service):
         forms = []
         for user in users:
             scores = Score.query(Score.user==user.key)
-            scores = [float(score.score) for score in scores]
-            avg_score = sum(scores)/len(scores)
-            form = UserRankingForm()
-            form.user = user.name
-            form.avg_score = avg_score
-            forms.append(form)            
+            if scores.get() is not None:
+                scores = [float(score.score) for score in scores]
+                avg_score = sum(scores)/len(scores)
+                form = UserRankingForm()
+                form.user = user.name
+                form.avg_score = avg_score
+                forms.append(form)            
         return UserRankingForms(items=sorted(forms, key=lambda form: form.avg_score))
 
     @endpoints.method(response_message=GameHistoryForm,
@@ -222,7 +224,7 @@ class HangmanApi(remote.Service):
                       name='get_game_history',
                       http_method='GET',)
     def get_game_history(self, request):
-    	"""Gets history of moves for a game"""
+        """Gets history of moves for a game"""
         game = get_by_urlsafe(request.urlsafe_game_key, Game)
         
         if game.game_status == 'Playing':
@@ -234,7 +236,7 @@ class HangmanApi(remote.Service):
         forms = []
         
         # go through all letters guessed except last one
-        for letter in guesses[:-1]:
+        for letter in guesses:
             form = HistoryForm()
             if ''.join(game.word).find(letter) is -1:
                 form.guess_status = 'Incorrect'
